@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VetMemo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root {
+  --bg:#0f1117;--surface:#181c27;--surface2:#1e2335;--surface3:#252b40;
+  --border:#2d3452;--border2:#3d4570;
+  --accent:#4f8ef7;--accent2:#3b6fd4;--accent-glow:rgba(79,142,247,0.15);
+  --green:#3ecf8e;--green-glow:rgba(62,207,142,0.15);
+  --warn:#f5a623;--danger:#e74c5e;--discord:#5865f2;
+  --text:#e8eaf2;--text2:#9ca3c8;--text3:#5a6080;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:14px;min-height:100vh}
+
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 20px;height:52px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:200;
+}
+.logo{font-size:17px;font-weight:700;color:var(--text)}
+.logo em{color:var(--accent);font-style:normal}
+header .spacer{flex:1}
+.hdr-pill{font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;display:flex;align-items:center;gap:5px}
+.hdr-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.hdr-pill .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* Tab navigation */
+.tab-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .badge{background:var(--warn);color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center}
+
+.layout{display:flex;min-height:calc(100vh - 97px)}
+.sidebar{width:280px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;position:sticky;top:0;height:calc(100vh - 97px)}
+.main{flex:1}
+
+/* Tab pages */
+.tab-page{display:none;padding:20px;flex-direction:column;gap:16px}
+.tab-page.active{display:flex}
+
+.s-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.s-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;margin-top:8px}
+label:first-of-type{margin-top:0}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:7px 10px;outline:none;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--accent)}
+input[type=password]{font-family:'JetBrains Mono',monospace;letter-spacing:.05em}
+.input-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+
+/* Dict tags */
+.dict-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;max-height:160px;overflow-y:auto}
+.dict-tag{display:inline-flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid var(--green);border-radius:20px;padding:2px 10px 2px 12px}
+.dt-word{color:var(--green);font-size:11px;font-family:'JetBrains Mono',monospace}
+.dt-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1}
+.dt-del:hover{color:var(--danger)}
+
+/* Master */
+.master-list{max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.m-row{display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;transition:background .15s}
+.m-row:hover{background:var(--surface3)}
+.m-name{color:var(--text)}
+.m-price{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px}
+.m-memo{color:var(--text3);font-size:10px}
+
+/* Buttons */
+.btn{border:none;border-radius:6px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;font-weight:500;font-size:13px;padding:8px 16px;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border2)}
+.btn-green{background:var(--green);color:#0a1a12;font-weight:700}
+.btn-green:hover{filter:brightness(1.1)}
+.btn-green:disabled{opacity:.4;cursor:not-allowed}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-discord{background:var(--discord);color:#fff}
+.btn-discord:hover{filter:brightness(1.15)}
+.btn-discord:disabled{opacity:.4;cursor:not-allowed}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px}
+.btn-full{width:100%;justify-content:center}
+
+/* Panel */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.panel-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface2)}
+.panel-hdr h2{font-size:13px;font-weight:600;flex:1}
+.step-badge{font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:2px 8px}
+.panel-body{padding:14px}
+
+/* ===== MEMO QUEUE (往診メモリスト) ===== */
+.memo-queue{display:flex;flex-direction:column;gap:8px}
+.memo-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+  position:relative;transition:border-color .2s;
+}
+.memo-card:hover{border-color:var(--border2)}
+.memo-card.processing{border-color:var(--accent);animation:pulse 1.5s infinite}
+.memo-card.done{border-color:var(--green);opacity:.75}
+@keyframes pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px var(--accent-glow)}}
+.mc-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.mc-num{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+.mc-time{font-size:11px;color:var(--text3)}
+.mc-status{margin-left:auto;font-size:11px;font-weight:500}
+.mc-status.pending{color:var(--warn)}
+.mc-status.processing{color:var(--accent)}
+.mc-status.done{color:var(--green)}
+.mc-patient{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px}
+.mc-text{font-size:12px;color:var(--text2);line-height:1.5;max-height:60px;overflow:hidden;position:relative}
+.mc-text::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:linear-gradient(transparent,var(--surface2))}
+.mc-actions{display:flex;gap:6px;margin-top:10px}
+
+/* New memo form */
+.new-memo-form{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px}
+.new-memo-form textarea{min-height:100px;resize:vertical;font-size:14px;line-height:1.6}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+
+/* ===== RESULT / BATCH VIEW ===== */
+.results-list{display:flex;flex-direction:column;gap:20px;padding-right:4px}
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.rc-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.rc-patient{font-size:13px;font-weight:600}
+.rc-time{font-size:11px;color:var(--text3)}
+.rc-total{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--green)}
+.rc-body{padding:12px 14px;max-height:320px;overflow-y:auto}
+
+/* Items table */
+.items-table{width:100%;border-collapse:collapse;font-size:13px}
+.items-table th{text-align:left;padding:5px 8px;font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)}
+.items-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.items-table tr:last-child td{border-bottom:none}
+.items-table tr:hover td{background:var(--surface2)}
+.name-cell{color:var(--text);font-weight:500}
+.name-cell.unknown{color:var(--warn)}
+.num-cell{font-family:'JetBrains Mono',monospace;color:var(--text2);text-align:right}
+.price-cell{font-family:'JetBrains Mono',monospace;color:var(--text2);text-align:right}
+.sub-cell{font-family:'JetBrains Mono',monospace;color:var(--text);text-align:right;font-weight:500}
+.qty-input{width:55px;padding:2px 5px;font-size:12px;font-family:'JetBrains Mono',monospace;text-align:right}
+.del-row{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 3px}
+.del-row:hover{color:var(--danger)}
+.formula-line{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);word-break:break-all;margin-top:8px}
+.formula-line span{color:var(--accent)}
+.rc-actions{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+
+/* Discord preview */
+.discord-preview{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7;white-space:pre;overflow-x:auto;margin-top:8px}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:9999}
+.toast{background:var(--surface3);border:1px solid var(--border2);border-radius:7px;padding:8px 14px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:7px;animation:slideIn .2s ease;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--danger);color:var(--danger)}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.spinner{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Batch controls */
+.batch-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.batch-bar .count{font-size:12px;color:var(--text2)}
+.batch-progress{flex:1;min-width:120px;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.batch-progress-bar{height:100%;background:var(--accent);border-radius:3px;transition:width .4s ease}
+
+/* Empty */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
+.empty-state .es-icon{font-size:36px;margin-bottom:10px;opacity:.4}
+
+/* Mobile */
+@media(max-width:768px){
+  .layout{flex-direction:column}
+  .sidebar{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
+  .tab-page{padding:14px;gap:12px}
+  .form-row{grid-template-columns:1fr}
+  .new-memo-form textarea{font-size:16px}
+  .btn{padding:10px 14px;font-size:14px}
+  .tab{padding:8px 12px;font-size:12px}
+}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Vet<em>Memo</em></div>
+  <div class="spacer"></div>
+  <div class="hdr-pill">
+    <div class="dot" id="apiDot"></div>
+    <span id="apiStatus">未設定</span>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('memo')" id="tab-memo">
+    📝 往診メモ
+    <span class="badge" id="pendingBadge" style="display:none">0</span>
+  </div>
+  <div class="tab" onclick="switchTab('calc')" id="tab-calc">
+    🧮 一括計算
+  </div>
+  <div class="tab" onclick="switchTab('settings')" id="tab-settings">
+    ⚙️ 設定
+  </div>
+  <div class="tab" onclick="switchTab('conv')" id="tab-conv">
+    🔄 電カル変換
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="s-section">
+      <div class="s-title">マスター一覧</div>
+      <input type="text" id="masterSearch" placeholder="品目を検索..." oninput="renderMasterList()" style="margin-bottom:8px">
+      <div class="master-list" id="masterList"></div>
+      <p class="input-hint" style="margin-top:5px">タップで計算中の行に追加</p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- ===== TAB: 往診メモ ===== -->
+    <div class="tab-page active" id="page-memo">
+
+      <!-- New memo form -->
+      <div class="new-memo-form">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">🎤 新しいメモを追加</div>
+        <div class="form-row">
+          <div>
+            <label>患者番号</label>
+            <input type="text" id="newPatientNo" placeholder="例: 1234567">
+          </div>
+          <div>
+            <label>飼い主（農場）名</label>
+            <input type="text" id="newOwnerName" placeholder="例: 山田農場">
+          </div>
+        </div>
+        <label>音声メモ（iPhoneで入力したテキストを貼り付け）</label>
+        <textarea id="newMemoText" placeholder="例：再診して血検してアンピ5ml打ってマルボ2錠出した"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost btn-sm" onclick="pasteFromClipboard()" style="white-space:nowrap;flex-shrink:0">
+            📋 貼り付け
+          </button>
+          <button class="btn btn-primary btn-full" onclick="addMemo()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            メモを保存
+          </button>
+        </div>
+      </div>
+
+      <!-- Queue -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2)">保存済みメモ <span id="queueCount" style="color:var(--text3)">0件</span></div>
+        <button class="btn btn-ghost btn-xs" onclick="clearDoneMemos()">完了済みを削除</button>
+      </div>
+      <div class="memo-queue" id="memoQueue">
+        <div class="empty-state"><div class="es-icon">🐄</div>メモがありません<br>往診先で音声入力して追加してください</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: 一括計算 ===== -->
+    <div class="tab-page" id="page-calc">
+
+      <div class="batch-bar">
+        <div class="count" id="batchCount">未処理: <b id="pendingCount">0</b>件</div>
+        <div class="batch-progress"><div class="batch-progress-bar" id="batchBar" style="width:0%"></div></div>
+        <button class="btn btn-green" id="batchBtn" onclick="batchProcess()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          まとめてAI解析
+        </button>
+        <button class="btn btn-discord btn-sm" id="sendAllBtn" onclick="sendAllToDiscord()" style="display:none">
+          一括Discord送信
+        </button>
+      </div>
+
+      <div class="results-list" id="resultsList">
+        <div class="empty-state"><div class="es-icon">📋</div>「往診メモ」タブでメモを追加してから<br>「まとめてAI解析」を押してください</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: 電カル変換 ===== -->
+    <div class="tab-page" id="page-conv">
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>🔄 電子カルテレコード作成</h2><span class="step-badge">AI変換</span></div>
+        <div class="panel-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+            <div>
+              <label>日付（YYYYMMDD）</label>
+              <input type="text" id="convDate" placeholder="20260227" oninput="updateKartePreview()">
+            </div>
+            <div>
+              <label>時間</label>
+              <input type="text" id="convTime" placeholder="例: 10:30" oninput="updateKartePreview()">
+            </div>
+            <div>
+              <label>往診元</label>
+              <input type="text" id="convOwnerName" placeholder="例: 山田農場" oninput="updateKartePreview()">
+            </div>
+            <div>
+              <label>往診距離</label>
+              <input type="text" id="convDistance" placeholder="例: 5km" oninput="updateKartePreview()">
+            </div>
+            <div>
+              <label>体温</label>
+              <input type="text" id="convTemp" placeholder="例: 38.5" oninput="updateKartePreview()">
+            </div>
+            <div>
+              <label>症状/所見</label>
+              <input type="text" id="convSymptom" placeholder="例: 未消化軟便" oninput="updateKartePreview()">
+            </div>
+          </div>
+          <label>VetMemo品目（B1形式）</label>
+          <textarea id="convInput" placeholder="例: ビオペア*2/ウルソ粉*1/po/直検" style="min-height:60px;resize:vertical;font-family:'JetBrains Mono',monospace;font-size:13px" oninput="updateKartePreview()"></textarea>
+          <p class="input-hint">計算タブの「電カル変換」ボタンで自動入力できます</p>
+          <button class="btn btn-primary btn-full" id="convBtn" onclick="convertToElectronic()" style="margin-top:8px">🤖 処置内容をAI予測</button>
+          <label style="margin-top:12px">処置内容（電カル形式）</label>
+          <textarea id="convResult" placeholder="AI予測結果、または直接入力" style="min-height:50px;resize:vertical;font-family:'JetBrains Mono',monospace;font-size:13px" oninput="updateKartePreview()"></textarea>
+          <div style="margin-top:14px">
+            <label>カルテレコード（プレビュー）</label>
+            <div id="kartePreview" style="background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);min-height:36px;word-break:break-all">—</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-green btn-sm btn-full" onclick="copyKarteRecord()">📋 カルテレコードをコピー</button>
+            <button class="btn btn-ghost btn-sm" onclick="saveConvPairFromResult()" style="white-space:nowrap">学習データに保存</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr">
+          <h2>📚 変換ペア（学習データ）</h2>
+          <span id="pairCountLabel" style="font-size:11px;color:var(--text3);margin-left:auto">0件</span>
+        </div>
+        <div class="panel-body">
+          <!-- インライン編集テーブル（pendingPairs） -->
+          <div id="pendingPairsSection" style="display:none;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="font-size:12px;font-weight:600;color:var(--text2)">編集中のペア <span id="pendingCount" style="color:var(--text3)"></span></div>
+              <button class="btn btn-primary btn-sm" onclick="saveAllPendingPairs()">すべて保存</button>
+            </div>
+            <p class="input-hint" style="margin-bottom:8px">右列（電カル形式）を書き換えてから「すべて保存」を押してください。左列と同じ行は保存されません。</p>
+            <div id="pendingPairsTable" style="display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+
+          <!-- 一括インポート（折りたたみ） -->
+          <details style="margin-bottom:12px">
+            <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);padding:4px 0;user-select:none">📥 一括インポート（Excel/CSV）</summary>
+            <div style="margin-top:8px">
+              <p class="input-hint">ExcelのA列:B1形式、B列:電カル形式、C列:メモ（任意）をコピーして貼り付け</p>
+              <textarea id="bulkImportText" placeholder="Excelのセルをコピーして貼り付け..." style="min-height:80px;resize:vertical;font-family:'JetBrains Mono',monospace;font-size:12px;margin-top:6px"></textarea>
+              <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+                <button class="btn btn-primary btn-sm" onclick="bulkImportConvPairs()">インポート実行</button>
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer">CSVファイル<input type="file" accept=".csv,.txt" style="display:none" onchange="handleCsvImport(this)"></label>
+              </div>
+            </div>
+          </details>
+
+          <!-- 手動追加（折りたたみ） -->
+          <details style="margin-bottom:12px">
+            <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);padding:4px 0;user-select:none">✏️ 手動で追加</summary>
+            <div style="margin-top:8px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <div><label>紙カルテ形式</label><input type="text" id="newPairPaper" placeholder="ビオペア*2/ウルソ粉*1"></div>
+                <div><label>電子カルテ形式</label><input type="text" id="newPairElectronic" placeholder="診断書/ビオペア成牛"></div>
+              </div>
+              <input type="text" id="newPairNote" placeholder="メモ（任意）" style="margin-top:6px;margin-bottom:8px">
+              <button class="btn btn-primary btn-sm" onclick="addConvPair()">ペアを追加</button>
+            </div>
+          </details>
+
+          <!-- 確定済みペアリスト -->
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">確定済みペア</div>
+          <div id="pairsList" style="display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== TAB: 設定 ===== -->
+    <div class="tab-page" id="page-settings">
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>🔑 APIキー設定</h2></div>
+        <div class="panel-body">
+          <label>Gemini API Key</label>
+          <input type="password" id="anthropicKey" placeholder="AIza..." oninput="checkKeys()">
+          <label>Discord Webhook URL</label>
+          <input type="password" id="discordUrl" placeholder="https://discord.com/api/webhooks/...">
+          <p class="input-hint">ブラウザにのみ保存されます。外部に送信されません。</p>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-primary" onclick="saveKeys()">保存</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadKeys()">再読込</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>☁️ クラウド同期（jsonbin.io）</h2></div>
+        <div class="panel-body">
+          <p class="input-hint" style="margin-bottom:10px">ボタン1つでスマホ↔PC同期できます。<br>① <b>jsonbin.io</b> で無料アカウントを作成しAPIキーを取得<br>② 両端末に同じAPIキーとBin IDを設定するだけ</p>
+          <label>jsonbin.io API Key</label>
+          <input type="password" id="jsonbinKey" placeholder="$2a$10$...">
+          <label style="margin-top:8px">Bin ID <span style="font-size:10px;color:var(--text3)">（初回保存後に自動発行。他の端末にはコピーして貼り付け）</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="jsonbinId" placeholder="初回保存後に自動入力されます" style="font-family:'JetBrains Mono',monospace;font-size:12px">
+            <button class="btn btn-ghost btn-xs" onclick="copyBinId()">コピー</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="cloudSave()">↑ クラウドに保存</button>
+            <button class="btn btn-ghost btn-sm" onclick="cloudLoad()">↓ クラウドから読み込む</button>
+          </div>
+          <div id="cloudInfo" style="font-size:11px;color:var(--text3);margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>💾 バックアップ（JSONファイル）</h2></div>
+        <div class="panel-body">
+          <p class="input-hint" style="margin-bottom:10px">手動でJSONファイルに書き出し・読み込みできます。</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="exportData()">↓ JSONをダウンロード</button>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+              ↑ JSONを読み込む
+              <input type="file" accept=".json" style="display:none" onchange="importData(this)">
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>📋 マスターデータ管理</h2></div>
+        <div class="panel-body">
+          <p class="input-hint" style="margin-bottom:10px">品目の追加・編集・削除ができます。品目名はAI解析・B1形式出力に使われます。</p>
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <input type="text" id="newMasterName" placeholder="品目名" style="flex:1;min-width:100px">
+            <input type="number" id="newMasterPrice" placeholder="単価(円)" style="width:90px" min="0" step="0.01">
+            <button class="btn btn-primary btn-sm" id="masterSaveBtn" onclick="saveMasterItem()">追加</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelMasterEdit()" id="masterCancelBtn" style="display:none">キャンセル</button>
+          </div>
+          <input type="text" id="masterEditSearch" placeholder="品目を検索..." oninput="renderMasterEditor()" style="margin-bottom:8px">
+          <div id="masterEditor" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
+          <div style="margin-top:10px;display:flex;justify-content:flex-end">
+            <button class="btn btn-ghost btn-xs" onclick="resetMaster()" style="color:var(--text3)">デフォルトに戻す</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>📖 専門用語辞書</h2></div>
+        <div class="panel-body">
+          <p class="input-hint" style="margin-bottom:10px">✅ 正しい表記を登録するだけでOK。AIが「まるぼ→マルボ」のような音声誤変換を自動補正します。</p>
+          <div class="dict-tags" id="dictTags"></div>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="dictWord" placeholder="正しい表記（例: マルボ）" style="font-size:13px">
+            <button class="btn btn-primary btn-sm" onclick="addDict()">追加</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<datalist id="masterNamesList"></datalist>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ===================== MASTER DATA =====================
+const MASTER_BUILTIN = [{"name":"バソラミン","price":10},{"name":"ペニシリン","price":8.4},{"name":"デキサ","price":25},{"name":"フルスル","price":8.24},{"name":"アンピ","price":335},{"name":"マルボ","price":206},{"name":"メトクロ","price":310},{"name":"パンカル","price":17.77},{"name":"ウルソ","price":564},{"name":"ネオアス","price":9.9},{"name":"OTC","price":11},{"name":"ビタミンK","price":179},{"name":"フルニキ","price":150},{"name":"トンキー","price":8.02},{"name":"フォルテ","price":29},{"name":"メンブトン","price":32.2},{"name":"バイトリル","price":94},{"name":"ダイメトン","price":6.7},{"name":"パドリン","price":54.9},{"name":"ザクトラン","price":230},{"name":"ベルパリン","price":6.25},{"name":"セフチオ","price":1755},{"name":"セファ","price":720},{"name":"NF","price":142},{"name":"PG","price":297},{"name":"エクセネル","price":92},{"name":"レバチオ","price":1.74},{"name":"オバ","price":111},{"name":"ガスナイン","price":240},{"name":"プロナルゴン","price":555},{"name":"ビクタス","price":40},{"name":"デポー","price":650},{"name":"ジメトキシン","price":8.5},{"name":"B1リンゲル","price":0.305},{"name":"Ca","price":1.422},{"name":"HSS","price":0.55},{"name":"酢酸リンゲル500","price":0.51},{"name":"酢酸リンゲル","price":0.315},{"name":"重曹","price":0.82},{"name":"5glu","price":0.464},{"name":"25glu","price":0.52},{"name":"40glu","price":0.702},{"name":"キシリット","price":0.938},{"name":"生食","price":0.472},{"name":"酢酸リンゲル糖1000","price":0.47},{"name":"酢酸リンゲル糖","price":0.58},{"name":"スタマー","price":80},{"name":"ウルソ粉","price":220},{"name":"ビオペア","price":369},{"name":"ミヤリサン","price":147},{"name":"カリウム","price":1.7},{"name":"ビスキノン","price":200},{"name":"ビオスリー","price":1.82},{"name":"獣医散","price":3.9},{"name":"im","price":720},{"name":"iv","price":980},{"name":"po","price":600},{"name":"pump","price":1370},{"name":"点滴1000","price":2880},{"name":"点滴2000","price":3200},{"name":"点滴3000","price":3520},{"name":"点滴4000","price":3840},{"name":"点滴5000","price":4160},{"name":"留置1000","price":3160},{"name":"留置2000","price":3480},{"name":"留置3000","price":3800},{"name":"吸入","price":2500},{"name":"ヴェトラップ","price":2020},{"name":"洗浄","price":740},{"name":"お灸","price":1080},{"name":"子宮内薬注","price":3100},{"name":"吸入本人","price":1500},{"name":"オペ","price":49790},{"name":"ルーメン","price":4760},{"name":"往診","price":1880},{"name":"初診","price":1440},{"name":"イーエスイー","price":119.9},{"name":"アミノ","price":1.64},{"name":"アミパ","price":2.75},{"name":"ミルカン","price":8.8},{"name":"モニラック","price":110},{"name":"ポリアクリル","price":150},{"name":"ルミナップ","price":1100},{"name":"イーサック","price":2.2},{"name":"ノイエル","price":20.9},{"name":"ボバクチン","price":2.42},{"name":"バリウム","price":1},{"name":"ジクロ","price":7.7},{"name":"レパミピド","price":13.2},{"name":"コクシックス","price":55},{"name":"ポルトラック","price":50},{"name":"オメプラゾール","price":44},{"name":"エクセーデ","price":605},{"name":"コクシ検査","price":1400},{"name":"生食1000ml","price":275},{"name":"オキシトシン冷蔵","price":2310},{"name":"タイニー","price":2448},{"name":"ピンク長針","price":5},{"name":"カナマイ","price":23.5},{"name":"硫マグ","price":250},{"name":"ワクチン注射","price":720},{"name":"スタートバック","price":1188},{"name":"セフロ","price":2256},{"name":"インタゲン","price":736},{"name":"ネオマイゾン","price":51},{"name":"フロロコール","price":55},{"name":"フジックス","price":390},{"name":"ガス抜き","price":1950},{"name":"オキシトシン輸入","price":55},{"name":"3ml針付き","price":3300},{"name":"20ml","price":28},{"name":"10ml","price":13.5},{"name":"5ml","price":14.4},{"name":"2.5ml","price":12.1},{"name":"50ml","price":84},{"name":"istat","price":2800},{"name":"再診","price":560},{"name":"薬","price":560},{"name":"直検","price":500},{"name":"油","price":100},{"name":"18G長針","price":600},{"name":"21G長針","price":600},{"name":"21G短針","price":600},{"name":"血検","price":580},{"name":"セファZ袋","price":636},{"name":"セファZ箱","price":12720}];
+
+let MASTER = [...MASTER_BUILTIN];
+
+// ===================== STATE =====================
+let memos = [];    // {id, time, patientName, ownerName, text, status:'pending'|'done', items:[]}
+let DICT_WORDS = ["マルボ","アンピ","デキサ","ネオアス","イーエスイー","ザクトラン","セフチオ","バイトリル","フルニキ","メトクロ","パンカル","ウルソ","フルスル","バソラミン","ペニシリン","フォルテ","メンブトン","ダイメトン","パドリン","ベルパリン","セファ","エクセネル","ガスナイン","プロナルゴン","ビクタス","デポー","ジメトキシン","スタマー","ウルソ粉","ビオペア","ミヤリサン","ビスキノン","ビオスリー","獣医散","モニラック","ルミナップ","ノイエル","ボバクチン","ジクロ","レパミピド","コクシックス","ポルトラック","オメプラゾール","エクセーデ","タイニー","カナマイ","硫マグ","スタートバック","セフロ","インタゲン","ネオマイゾン","フロロコール","フジックス","ガス抜き"];
+let activeResultId = null; // for sidebar master add
+let convPairs = []; // [{id, paper, electronic, note, createdAt}]
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', () => {
+  loadKeys();
+  loadJsonbinSettings();
+  loadFromStorage();
+  renderDict();
+  renderMasterList();
+  renderMasterEditor();
+  renderMemoQueue();
+  updateBadge();
+  renderConvPairs();
+  const dl = document.getElementById('masterNamesList');
+  MASTER.forEach(m => { const o = document.createElement('option'); o.value = m.name; dl.appendChild(o); });
+
+  // URLパラメータからメモを受け取る（iPhoneショートカット連携）
+  handleUrlParams();
+});
+
+// bfcache復元時にも対応（Safariが既存タブを復元するケース）
+window.addEventListener('pageshow', function(e) {
+  if(e.persisted) handleUrlParams();
+});
+
+function handleUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const memoText = params.get('memo');
+  if(!memoText) return;
+
+  document.getElementById('newMemoText').value = memoText;
+  if(params.get('no'))    document.getElementById('newPatientNo').value = params.get('no');
+  if(params.get('owner')) document.getElementById('newOwnerName').value = params.get('owner');
+  history.replaceState({}, '', window.location.pathname);
+
+  if(params.get('autosave') === '1') {
+    // 自動保存モード：保存のみ（解析は手動）
+    addMemo(true);
+    toast('メモを自動保存しました', 'success');
+  } else {
+    switchTab('memo');
+    document.getElementById('newMemoText').focus();
+    toast('音声メモを受け取りました。内容を確認して「保存」を押してください', 'success');
+  }
+}
+
+// ===================== TABS =====================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+  if(name === 'calc') renderResultsList();
+}
+
+// ===================== STORAGE =====================
+function saveToStorage() {
+  try {
+    localStorage.setItem('vetmemo_memos', JSON.stringify(memos));
+    localStorage.setItem('vetmemo_dict', JSON.stringify(DICT_WORDS));
+    localStorage.setItem('vetmemo_master', JSON.stringify(MASTER));
+    localStorage.setItem('vetmemo_convPairs', JSON.stringify(convPairs));
+  } catch(e){}
+}
+function loadFromStorage() {
+  try {
+    const m = localStorage.getItem('vetmemo_memos');
+    if(m) memos = JSON.parse(m);
+    const d = localStorage.getItem('vetmemo_dict');
+    if(d) DICT_WORDS = JSON.parse(d);
+    const ms = localStorage.getItem('vetmemo_master');
+    if(ms) MASTER = JSON.parse(ms);
+    const cp = localStorage.getItem('vetmemo_convPairs');
+    if(cp) convPairs = JSON.parse(cp);
+  } catch(e){}
+}
+
+// ===================== KEYS =====================
+function saveKeys() {
+  const ak = document.getElementById('anthropicKey').value;
+  const dw = document.getElementById('discordUrl').value;
+  try{localStorage.setItem('ak',ak);localStorage.setItem('dw',dw);}catch(e){}
+  checkKeys();
+  toast('設定を保存しました', 'success');
+}
+function loadKeys() {
+  try {
+    const ak = localStorage.getItem('ak')||'';
+    const dw = localStorage.getItem('dw')||'';
+    if(ak) document.getElementById('anthropicKey').value = ak;
+    if(dw) document.getElementById('discordUrl').value = dw;
+  } catch(e){}
+  checkKeys();
+}
+function checkKeys() {
+  const ak = document.getElementById('anthropicKey').value.trim();
+  const dot = document.getElementById('apiDot');
+  const status = document.getElementById('apiStatus');
+  if(ak.startsWith('AIza')) {
+    dot.className='dot on'; status.textContent='API接続可';
+  } else {
+    dot.className='dot'; status.textContent=ak?'キー確認中':'未設定';
+  }
+}
+
+// ===================== DICT =====================
+function renderDict() {
+  const el = document.getElementById('dictTags');
+  el.innerHTML = DICT_WORDS.length === 0
+    ? '<span style="font-size:11px;color:var(--text3)">登録なし</span>'
+    : DICT_WORDS.map((w,i) => `<div class="dict-tag"><span class="dt-word">${w}</span><button class="dt-del" onclick="removeDict(${i})">×</button></div>`).join('');
+}
+function addDict() {
+  const w = document.getElementById('dictWord').value.trim();
+  if(!w) return;
+  if(DICT_WORDS.includes(w)) return toast('すでに登録済みです');
+  DICT_WORDS.push(w);
+  document.getElementById('dictWord').value='';
+  renderDict();
+  saveToStorage();
+  toast(`辞書に追加: ${w}`, 'success');
+}
+function removeDict(i) { DICT_WORDS.splice(i,1); renderDict(); saveToStorage(); }
+function getDictPrompt() {
+  if(!DICT_WORDS.length) return '';
+  return `\n\n【専門用語辞書（音声誤変換の補正に使用）】\n以下は正しい表記です。音声認識で似た読みの誤変換があった場合、この正式名称に置き換えてください：\n${DICT_WORDS.join('、')}`;
+}
+
+// ===================== MASTER LIST =====================
+// ===================== MASTER EDITOR =====================
+let masterEditIndex = -1; // -1=追加モード, 0以上=編集モード
+
+function renderMasterEditor() {
+  const el = document.getElementById('masterEditor');
+  if(!el) return;
+  const q = (document.getElementById('masterEditSearch').value||'').trim().toLowerCase();
+  const list = q ? MASTER.filter(m=>m.name.toLowerCase().includes(q)) : MASTER;
+  el.innerHTML = list.map(m => {
+    const i = MASTER.indexOf(m);
+    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:5px;background:var(--surface2);font-size:12px">
+      <span style="flex:1;font-weight:500">${m.name}</span>
+      <span style="font-family:'JetBrains Mono',monospace;color:var(--text2);min-width:60px;text-align:right">¥${m.price.toLocaleString()}</span>
+      <button class="btn btn-ghost btn-xs" onclick="startMasterEdit(${i})">✏️</button>
+      <button class="del-row" onclick="deleteMasterItem(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function startMasterEdit(i) {
+  masterEditIndex = i;
+  document.getElementById('newMasterName').value = MASTER[i].name;
+  document.getElementById('newMasterPrice').value = MASTER[i].price;
+  document.getElementById('masterSaveBtn').textContent = '更新';
+  document.getElementById('masterCancelBtn').style.display = '';
+  document.getElementById('newMasterName').focus();
+}
+
+function cancelMasterEdit() {
+  masterEditIndex = -1;
+  document.getElementById('newMasterName').value = '';
+  document.getElementById('newMasterPrice').value = '';
+  document.getElementById('masterSaveBtn').textContent = '追加';
+  document.getElementById('masterCancelBtn').style.display = 'none';
+}
+
+function saveMasterItem() {
+  const name  = document.getElementById('newMasterName').value.trim();
+  const price = parseFloat(document.getElementById('newMasterPrice').value);
+  if(!name) return toast('品目名を入力してください', 'error');
+  if(isNaN(price) || price < 0) return toast('単価を正しく入力してください', 'error');
+  if(masterEditIndex >= 0) {
+    MASTER[masterEditIndex] = { name, price };
+    toast(`「${name}」を更新しました`, 'success');
+  } else {
+    if(MASTER.find(m=>m.name===name)) return toast('同じ品目名がすでに存在します', 'error');
+    MASTER.push({ name, price });
+    toast(`「${name}」を追加しました`, 'success');
+  }
+  saveToStorage();
+  cancelMasterEdit();
+  renderMasterEditor();
+  renderMasterList();
+  // datalistを更新
+  const dl = document.getElementById('masterNamesList');
+  if(dl) { dl.innerHTML=''; MASTER.forEach(m=>{const o=document.createElement('option');o.value=m.name;dl.appendChild(o);}); }
+}
+
+function deleteMasterItem(i) {
+  const name = MASTER[i].name;
+  if(!confirm(`「${name}」を削除しますか？`)) return;
+  MASTER.splice(i, 1);
+  saveToStorage();
+  renderMasterEditor();
+  renderMasterList();
+  toast(`「${name}」を削除しました`);
+}
+
+function resetMaster() {
+  if(!confirm('マスターデータをデフォルトに戻しますか？\n追加・編集した内容はすべて消えます。')) return;
+  MASTER = [...MASTER_BUILTIN];
+  saveToStorage();
+  renderMasterEditor();
+  renderMasterList();
+  toast('デフォルトに戻しました', 'success');
+}
+
+function renderMasterList() {
+  const q = document.getElementById('masterSearch').value.trim().toLowerCase();
+  const filtered = q ? MASTER.filter(m=>m.name.toLowerCase().includes(q)) : MASTER;
+  document.getElementById('masterList').innerHTML = filtered.slice(0,60).map(m =>
+    `<div class="m-row" onclick="addMasterToActive('${m.name}')">
+      <span class="m-name">${m.name}</span>
+      <span class="m-price">¥${m.price.toLocaleString()}</span>
+    </div>`).join('');
+}
+function addMasterToActive(name) {
+  if(!activeResultId) return toast('先に計算タブで対象メモを選んでください');
+  const memo = memos.find(m=>m.id===activeResultId);
+  if(!memo||!memo.items) return;
+  const master = MASTER.find(x=>x.name===name);
+  memo.items.push({name, qty:1, price:master?master.price:0, unit:'', unknown:!master});
+  renderResultsList();
+  saveToStorage();
+  toast(`${name} を追加`, 'success');
+}
+
+// ===================== CLIPBOARD =====================
+async function pasteFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if(!text) return toast('クリップボードにテキストがありません');
+    document.getElementById('newMemoText').value = text;
+    document.getElementById('newMemoText').focus();
+    toast('クリップボードから貼り付けました', 'success');
+  } catch(e) {
+    toast('クリップボードの読み取りに失敗しました（権限が必要です）', 'error');
+  }
+}
+
+// ===================== MEMO QUEUE =====================
+function addMemo(silent=false) {
+  const text = document.getElementById('newMemoText').value.trim();
+  if(!text) return toast('メモを入力してください');
+  const memo = {
+    id: Date.now().toString(),
+    time: new Date().toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    patientNo: document.getElementById('newPatientNo').value.trim(),
+    ownerName: document.getElementById('newOwnerName').value.trim(),
+    text,
+    status: 'pending',
+    items: [],
+    temp: '',
+    symptom: ''
+  };
+  memos.push(memo);
+  document.getElementById('newMemoText').value='';
+  document.getElementById('newPatientNo').value='';
+  document.getElementById('newOwnerName').value='';
+  saveToStorage();
+  renderMemoQueue();
+  updateBadge();
+  if(!silent) toast('メモを保存しました', 'success');
+}
+
+function renderMemoQueue() {
+  const el = document.getElementById('memoQueue');
+  if(!memos.length) {
+    el.innerHTML='<div class="empty-state"><div class="es-icon">🐄</div>メモがありません<br>往診先で音声入力して追加してください</div>';
+    document.getElementById('queueCount').textContent='0件';
+    return;
+  }
+  document.getElementById('queueCount').textContent=`${memos.length}件`;
+  el.innerHTML=[...memos].reverse().map(m=>`
+    <div class="memo-card ${m.status}" id="mc-${m.id}">
+      <div class="mc-header">
+        <span class="mc-num">#${memos.indexOf(m)+1}</span>
+        <span class="mc-time">${m.time}</span>
+        <span class="mc-status ${m.status}">${m.status==='pending'?'⏳ 未処理':m.status==='processing'?'⚡ 処理中':'✅ 完了'}</span>
+      </div>
+      ${(m.patientNo||m.ownerName)?`<div class="mc-patient">🐮 ${m.patientNo?'['+m.patientNo+'] ':''}${m.ownerName||''}</div>`:''}
+      <div class="mc-text">${m.text}</div>
+      <div class="mc-actions">
+        <button class="btn btn-ghost btn-xs" onclick="deleteMemo('${m.id}')">削除</button>
+        ${m.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="processSingle('${m.id}')">この1件を解析</button>`:''}
+        ${m.status==='done'?`<button class="btn btn-xs" style="background:var(--surface3);color:var(--text2);border:1px solid var(--border)" onclick="switchTab('calc')">結果を見る →</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function deleteMemo(id) {
+  memos = memos.filter(m=>m.id!==id);
+  saveToStorage();
+  renderMemoQueue();
+  updateBadge();
+  renderResultsList();
+}
+function clearDoneMemos() {
+  memos = memos.filter(m=>m.status!=='done');
+  saveToStorage();
+  renderMemoQueue();
+  updateBadge();
+  renderResultsList();
+  toast('完了済みを削除しました');
+}
+function updateBadge() {
+  const count = memos.filter(m=>m.status==='pending').length;
+  const badge = document.getElementById('pendingBadge');
+  badge.textContent=count;
+  badge.style.display=count>0?'':'none';
+  document.getElementById('pendingCount').textContent=count;
+  document.getElementById('sendAllBtn').style.display=memos.some(m=>m.status==='done')?'':'none';
+}
+
+// ===================== AI PARSE (single) =====================
+async function parseMemo(memo) {
+  const ak = document.getElementById('anthropicKey').value.trim();
+  if(!ak) throw new Error('APIキーが設定されていません');
+  const masterNames = MASTER.map(m=>m.name).join('、');
+  const prompt = `あなたは獣医診療記録の解析AIです。以下の診療メモから情報を抽出し、JSONオブジェクトのみを返してください。他の文字は一切不要です。
+
+【マスター品目リスト（品目名はこれらと完全一致させる）】
+${masterNames}${getDictPrompt()}
+
+【診療メモ】
+${memo.text}
+
+【出力形式】
+{"patientNo":"患者番号(耳標・個体識別番号等、不明は空文字)","ownerName":"飼い主・農場名(不明は空文字)","temp":"体温(数値のみ、例:38.5。記載なければ空文字)","symptom":"主訴・症状・所見(簡潔に。記載なければ空文字)","items":[{"name":"品目名","qty":数量,"unit":"単位(ml/錠/本/個/回など、不明は空)"}]}
+
+【ルール】
+- 品目名はマスターリストと完全一致させる。数量不明は1。ml数や個数があれば反映。同一品目は数量合計。処置(再診/初診/直検等)も含める。
+- ownerNameは農場名・飼い主の氏名のみ。メモに明記されていない場合は必ず空文字にする。
+- 診療内容（投薬・処置）とownerNameを混同しない。判断に迷う場合は空文字にする。
+- tempは数値のみ（単位なし）。symptomは診断名・主訴を短く。`;
+
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${ak}`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+  });
+  const data = await resp.json();
+  if(data.error) throw new Error(data.error.message);
+  let text = (data.candidates[0].content.parts||[]).map(b=>b.text||'').join('');
+  text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  const parsed = JSON.parse(text);
+  const items = (parsed.items||[]).map(p=>{
+    const m = MASTER.find(x=>x.name===p.name);
+    return {name:p.name, qty:parseFloat(p.qty)||1, unit:p.unit||'', price:m?m.price:0, unknown:!m};
+  });
+  // マスター品目名と一致する値は患者名・飼い主名として使わない
+  const masterNameSet = new Set(MASTER.map(m=>m.name));
+  const ownerName = masterNameSet.has(parsed.ownerName) ? '' : (parsed.ownerName||'');
+  return {patientNo:parsed.patientNo||'', ownerName, temp:parsed.temp||'', symptom:parsed.symptom||'', items};
+}
+
+async function processSingle(id) {
+  const memo = memos.find(m=>m.id===id);
+  if(!memo) return;
+  memo.status='processing';
+  renderMemoQueue();
+  try {
+    const result = await parseMemo(memo);
+    memo.items = result.items;
+    if(!memo.patientNo && result.patientNo) memo.patientNo = result.patientNo;
+    if(!memo.ownerName && result.ownerName) memo.ownerName = result.ownerName;
+    if(!memo.temp && result.temp) memo.temp = result.temp;
+    if(!memo.symptom && result.symptom) memo.symptom = result.symptom;
+    memo.status='done';
+    toast(`${memo.ownerName||'メモ'} の解析完了`, 'success');
+  } catch(e) {
+    memo.status='pending';
+    toast('エラー: '+e.message,'error');
+  }
+  saveToStorage();
+  renderMemoQueue();
+  updateBadge();
+}
+
+// ===================== BATCH PROCESS =====================
+async function batchProcess() {
+  const pending = memos.filter(m=>m.status==='pending');
+  if(!pending.length) return toast('未処理のメモがありません');
+  const ak = document.getElementById('anthropicKey').value.trim();
+  if(!ak) return toast('APIキーを設定してください（設定タブ）');
+
+  const btn = document.getElementById('batchBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span> 解析中...';
+  switchTab('calc');
+
+  for(let i=0; i<pending.length; i++){
+    const memo = pending[i];
+    const pct = Math.round((i/pending.length)*100);
+    document.getElementById('batchBar').style.width=pct+'%';
+    memo.status='processing';
+    renderResultsList();
+    try {
+      const result = await parseMemo(memo);
+      memo.items = result.items;
+      if(!memo.patientNo && result.patientNo) memo.patientNo = result.patientNo;
+      if(!memo.ownerName && result.ownerName) memo.ownerName = result.ownerName;
+      if(!memo.temp && result.temp) memo.temp = result.temp;
+      if(!memo.symptom && result.symptom) memo.symptom = result.symptom;
+      memo.status='done';
+    } catch(e) {
+      memo.status='pending';
+      toast(`${memo.patientName||'#'+(i+1)} エラー: `+e.message,'error');
+    }
+    saveToStorage();
+    renderResultsList();
+    renderMemoQueue();
+    updateBadge();
+    if(i < pending.length-1) await new Promise(r=>setTimeout(r,500));
+  }
+  document.getElementById('batchBar').style.width='100%';
+  btn.disabled=false;
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> まとめてAI解析';
+  toast('全件の解析が完了しました！', 'success');
+}
+
+// ===================== RESULTS LIST =====================
+function renderResultsList() {
+  const el = document.getElementById('resultsList');
+  const done = [...memos].reverse().filter(m=>m.status==='done'||m.status==='processing');
+  if(!done.length) {
+    el.innerHTML='<div class="empty-state"><div class="es-icon">📋</div>「往診メモ」タブでメモを追加してから<br>「まとめてAI解析」を押してください</div>';
+    return;
+  }
+  el.innerHTML = done.map(m => {
+    const total = (m.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
+    const formula = (m.items||[]).filter(it=>it.price>0).map(it=>`${it.name}*${it.qty}`).join('/');
+    const rows = (m.items||[]).map((it,i)=>{
+      const sub=Math.round(it.price*it.qty);
+      return `<tr>
+        <td><input type="text" class="name-input" value="${it.name.replace(/"/g,'&quot;')}" list="masterNamesList" onchange="updateItemName('${m.id}',${i},this.value)" title="クリックして編集。マスター品目名と一致させると単価が自動入力されます" style="width:100%;min-width:80px;border:1px solid ${it.unknown?'var(--warn)':'transparent'};border-radius:4px;padding:2px 6px;font-size:12px;background:${it.unknown?'rgba(255,165,0,0.1)':'transparent'};color:var(--text1);cursor:text"></td>
+        <td class="num-cell"><input class="qty-input" type="text" inputmode="decimal" value="${it.qty}" onchange="updateItemQty('${m.id}',${i},this.value)"></td>
+        <td class="price-cell">${it.price>0?'¥'+it.price.toLocaleString():'<span style="color:var(--warn)">未登録</span>'}</td>
+        <td class="sub-cell">${sub>0?'¥'+sub.toLocaleString():'—'}</td>
+        <td><button class="del-row" onclick="removeItemFromMemo('${m.id}',${i})">×</button></td>
+      </tr>`;
+    }).join('');
+    return `
+    <div class="result-card" id="rc-${m.id}" onclick="activeResultId='${m.id}'">
+      <div class="rc-header">
+        <div>
+          <div class="rc-patient">${m.status==='processing'?'<span class="spinner" style="width:10px;height:10px;margin-right:4px"></span>':''}${m.patientNo?'['+m.patientNo+'] ':''}${m.ownerName?'🐮 '+m.ownerName:'（農場名なし）'}</div>
+          <div class="rc-time">${m.time}</div>
+        </div>
+        <div class="rc-total">${m.status==='processing'?'解析中...':'¥'+Math.round(total).toLocaleString()}</div>
+      </div>
+      ${m.status==='done'?`
+      <div class="rc-body">
+        <table class="items-table">
+          <thead><tr><th>品目</th><th style="text-align:right">数量</th><th style="text-align:right">単価</th><th style="text-align:right">小計</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="formula-line">${formula?formula.split('/').map(p=>`<span>${p}</span>`).join('<span style="color:var(--text3)">/</span>'):'—'}</div>
+      </div>
+      <div style="padding:4px 14px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost btn-xs" style="width:100%;justify-content:center" onclick="addItemToMemo('${m.id}')">＋ 品目を追加</button>
+      </div>
+      <div class="rc-actions">
+        <button class="btn btn-discord btn-sm" onclick="sendOneToDiscord('${m.id}')">Discord送信</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyMemoFormula('${m.id}')">B1形式コピー</button>
+        <button class="btn btn-ghost btn-sm" onclick="fillConvInput(\`${formula}\`,\`${(m.ownerName||'').replace(/`/g,"'")}\`,\`${(m.temp||'').replace(/`/g,"'")}\`,\`${(m.symptom||'').replace(/`/g,"'")}\`)">🔄 電カル変換</button>
+        <button class="btn btn-ghost btn-sm" onclick="reparse('${m.id}')">再解析</button>
+      </div>`:''}`+
+      `</div>`;
+  }).join('');
+}
+
+function updateItemQty(memoId, idx, val) {
+  const m = memos.find(x=>x.id===memoId);
+  if(!m||!m.items) return;
+  m.items[idx].qty = parseFloat(val)||0;
+  saveToStorage();
+  renderResultsList();
+}
+function updateItemName(memoId, idx, val) {
+  const m = memos.find(x => x.id === memoId);
+  if(!m || !m.items) return;
+  const name = val.trim();
+  const master = MASTER.find(x => x.name === name);
+  m.items[idx].name  = name;
+  m.items[idx].price = master ? master.price : 0;
+  m.items[idx].unknown = !master;
+  saveToStorage();
+  renderResultsList();
+}
+function addItemToMemo(memoId) {
+  const m = memos.find(x => x.id === memoId);
+  if(!m) return;
+  if(!m.items) m.items = [];
+  m.items.push({ name: '', qty: 1, unit: '', price: 0, unknown: true });
+  saveToStorage();
+  renderResultsList();
+}
+function removeItemFromMemo(memoId, idx) {
+  const m = memos.find(x=>x.id===memoId);
+  if(!m||!m.items) return;
+  m.items.splice(idx,1);
+  saveToStorage();
+  renderResultsList();
+}
+async function reparse(id) {
+  const memo = memos.find(m=>m.id===id);
+  if(!memo) return;
+  memo.status='pending';
+  await processSingle(id);
+  renderResultsList();
+}
+
+// ===================== DISCORD =====================
+function buildDiscordMsg(memo) {
+  const now = new Date();
+  const items = memo.items||[];
+  const total = items.reduce((s,it)=>s+it.price*it.qty,0);
+  const formula = items.filter(it=>it.price>0).map(it=>`${it.name}*${it.qty}`).join('/');
+  const lines = items.map(it=>{
+    const sub=Math.round(it.price*it.qty);
+    return `  ${it.name.padEnd(10,'　')}¥${it.price.toLocaleString()} × ${it.qty}${it.unit?'('+it.unit+')':''} = ¥${sub.toLocaleString()}`;
+  }).join('\n');
+  return `📋 診療記録  ${memo.time}
+患者番号: ${memo.patientNo||'—'}　農場: ${memo.ownerName||'—'}
+──────────────────────
+${lines||'  （品目なし）'}
+──────────────────────
+合計: ¥${Math.round(total).toLocaleString()}
+📝 B1形式: ${formula||'—'}`;
+}
+
+async function sendOneToDiscord(id) {
+  const memo = memos.find(m=>m.id===id);
+  if(!memo) return;
+  const url = document.getElementById('discordUrl').value.trim();
+  if(!url) return toast('Discord Webhook URLを設定してください（設定タブ）');
+  try {
+    const resp = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:'```\n'+buildDiscordMsg(memo)+'\n```'})});
+    if(resp.ok) toast(`${memo.ownerName||'メモ'} をDiscordに送信しました`, 'success');
+    else throw new Error('HTTP '+resp.status);
+  } catch(e) { toast('送信エラー: '+e.message,'error'); }
+}
+
+async function sendAllToDiscord() {
+  const done = memos.filter(m=>m.status==='done');
+  if(!done.length) return toast('完了済みのメモがありません');
+  const url = document.getElementById('discordUrl').value.trim();
+  if(!url) return toast('Discord Webhook URLを設定してください（設定タブ）');
+  const btn = document.getElementById('sendAllBtn');
+  btn.disabled=true;
+  let ok=0;
+  for(const memo of done) {
+    try {
+      const resp = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:'```\n'+buildDiscordMsg(memo)+'\n```'})});
+      if(resp.ok) ok++;
+      await new Promise(r=>setTimeout(r,400));
+    } catch(e){}
+  }
+  btn.disabled=false;
+  toast(`${ok}件をDiscordに送信しました`, 'success');
+}
+
+// ===================== CLOUD SYNC (jsonbin.io) =====================
+function loadJsonbinSettings() {
+  try {
+    const key = localStorage.getItem('jbk') || '';
+    const id  = localStorage.getItem('jbid') || '';
+    if(key) document.getElementById('jsonbinKey').value = key;
+    if(id)  document.getElementById('jsonbinId').value  = id;
+  } catch(e) {}
+}
+
+function saveJsonbinSettings() {
+  try {
+    localStorage.setItem('jbk',  document.getElementById('jsonbinKey').value.trim());
+    localStorage.setItem('jbid', document.getElementById('jsonbinId').value.trim());
+  } catch(e) {}
+}
+
+function copyBinId() {
+  const id = document.getElementById('jsonbinId').value.trim();
+  if(!id) return toast('Bin IDがありません。先に「クラウドに保存」してください');
+  navigator.clipboard.writeText(id).then(() => toast('Bin IDをコピーしました', 'success'));
+}
+
+async function cloudSave() {
+  const key = document.getElementById('jsonbinKey').value.trim();
+  if(!key) return toast('jsonbin.io APIキーを入力してください', 'error');
+  const data = { version: 1, savedAt: new Date().toISOString(), memos, dictWords: DICT_WORDS, convPairs };
+  const binId = document.getElementById('jsonbinId').value.trim();
+  try {
+    let resp;
+    if(binId) {
+      resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
+        body: JSON.stringify(data)
+      });
+    } else {
+      resp = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': 'VetMemo', 'X-Bin-Private': 'true' },
+        body: JSON.stringify(data)
+      });
+    }
+    const result = await resp.json();
+    if(!resp.ok) throw new Error(result.message || 'HTTP ' + resp.status);
+    if(!binId) {
+      const newId = result.metadata.id;
+      document.getElementById('jsonbinId').value = newId;
+      localStorage.setItem('jbid', newId);
+    }
+    saveJsonbinSettings();
+    document.getElementById('cloudInfo').textContent = `最終保存: ${new Date().toLocaleString('ja-JP')}（${memos.length}件）`;
+    toast('クラウドに保存しました', 'success');
+  } catch(e) {
+    toast('保存エラー: ' + e.message, 'error');
+  }
+}
+
+async function cloudLoad() {
+  const key   = document.getElementById('jsonbinKey').value.trim();
+  const binId = document.getElementById('jsonbinId').value.trim();
+  if(!key)   return toast('jsonbin.io APIキーを入力してください', 'error');
+  if(!binId) return toast('Bin IDを入力してください（スマホ側でコピーして貼り付け）', 'error');
+  try {
+    const resp   = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': key } });
+    const result = await resp.json();
+    if(!resp.ok) throw new Error(result.message || 'HTTP ' + resp.status);
+    const data = result.record;
+    if(!Array.isArray(data.memos)) throw new Error('メモデータが見つかりません');
+    const existingIds = new Set(memos.map(m => m.id));
+    const newMemos = data.memos.filter(m => !existingIds.has(m.id));
+    memos = [...memos, ...newMemos];
+    if(Array.isArray(data.dictWords)) {
+      data.dictWords.forEach(w => { if(!DICT_WORDS.includes(w)) DICT_WORDS.push(w); });
+    }
+    if(Array.isArray(data.convPairs)) {
+      const existingPairIds = new Set(convPairs.map(p => p.id));
+      data.convPairs.forEach(p => { if(!existingPairIds.has(p.id)) convPairs.push(p); });
+    }
+    saveToStorage();
+    saveJsonbinSettings();
+    renderMemoQueue(); renderResultsList(); renderDict(); renderConvPairs(); updateBadge();
+    document.getElementById('cloudInfo').textContent = `最終読み込み: ${new Date().toLocaleString('ja-JP')}（${newMemos.length}件追加）`;
+    toast(`${newMemos.length}件の新しいメモを追加しました`, 'success');
+  } catch(e) {
+    toast('読み込みエラー: ' + e.message, 'error');
+  }
+}
+
+// ===================== DATA SYNC =====================
+function exportData() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    memos,
+    dictWords: DICT_WORDS,
+    convPairs
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `vetmemo_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('JSONをダウンロードしました', 'success');
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data.memos)) throw new Error('メモデータが見つかりません');
+      const existingIds = new Set(memos.map(m => m.id));
+      const newMemos = data.memos.filter(m => !existingIds.has(m.id));
+      memos = [...memos, ...newMemos];
+      if(Array.isArray(data.dictWords)) {
+        data.dictWords.forEach(w => { if(!DICT_WORDS.includes(w)) DICT_WORDS.push(w); });
+      }
+      if(Array.isArray(data.convPairs)) {
+        const existingPairIds = new Set(convPairs.map(p => p.id));
+        data.convPairs.forEach(p => { if(!existingPairIds.has(p.id)) convPairs.push(p); });
+      }
+      saveToStorage();
+      renderMemoQueue();
+      renderResultsList();
+      renderDict();
+      renderConvPairs();
+      updateBadge();
+      const info = document.getElementById('syncInfo');
+      if(info) info.textContent = `最終読み込み: ${new Date().toLocaleString('ja-JP')}（${newMemos.length}件追加）`;
+      toast(`${newMemos.length}件の新しいメモを追加しました`, 'success');
+    } catch(err) {
+      toast('読み込みエラー: ' + err.message, 'error');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function copyMemoFormula(id) {
+  const memo = memos.find(m=>m.id===id);
+  if(!memo||!memo.items) return;
+  const f = memo.items.filter(it=>it.price>0).map(it=>`${it.name}*${it.qty}`).join('/');
+  navigator.clipboard.writeText(f).then(()=>toast('B1形式をコピーしました','success'));
+}
+
+// ===================== ELECTRONIC RECORD CONVERSION =====================
+
+// --- カルテレコードプレビュー ---
+function updateKartePreview() {
+  const fields = ['convDate','convTime','convOwnerName','convDistance','convTemp','convSymptom']
+    .map(id => document.getElementById(id).value.trim());
+  const proc = document.getElementById('convResult').value.trim();
+  const preview = document.getElementById('kartePreview');
+  if(!preview) return;
+  const all = [...fields, proc];
+  preview.textContent = all.some(f=>f) ? all.join('｜') : '—';
+}
+
+function copyKarteRecord() {
+  const preview = document.getElementById('kartePreview').textContent;
+  if(!preview || preview === '—') return toast('レコードが空です', 'error');
+  navigator.clipboard.writeText(preview).then(() => toast('カルテレコードをコピーしました', 'success'));
+}
+
+// --- pendingPairs（インライン編集テーブル） ---
+let pendingPairs = []; // {id, paper, electronic}
+
+function addPendingPair(paper, electronic) {
+  // 同じpaperがすでにあれば追加しない
+  if(pendingPairs.some(p => p.paper === paper)) return;
+  pendingPairs.push({ id: Date.now().toString(), paper, electronic });
+  renderPendingPairs();
+}
+
+function renderPendingPairs() {
+  const section = document.getElementById('pendingPairsSection');
+  const table = document.getElementById('pendingPairsTable');
+  const countEl = document.getElementById('pendingCount');
+  if(!section || !table) return;
+  if(!pendingPairs.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  if(countEl) countEl.textContent = `${pendingPairs.length}件`;
+  table.innerHTML = pendingPairs.map((p, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:4px;align-items:center">
+      <input type="text" value="${p.paper.replace(/"/g,'&quot;')}" readonly
+        style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface3);color:var(--text3);cursor:default">
+      <input type="text" value="${p.electronic.replace(/"/g,'&quot;')}"
+        style="font-family:'JetBrains Mono',monospace;font-size:11px"
+        oninput="pendingPairs[${i}].electronic=this.value">
+      <button class="del-row" onclick="removePendingPair(${i})">×</button>
+    </div>`).join('');
+}
+
+function removePendingPair(i) {
+  pendingPairs.splice(i, 1);
+  renderPendingPairs();
+}
+
+function saveAllPendingPairs() {
+  const toSave = pendingPairs.filter(p => p.paper && p.electronic && p.paper !== p.electronic);
+  if(!toSave.length) return toast('書き換えられた行がありません', 'error');
+  const existingKeys = new Set(convPairs.map(p => p.paper + '||' + p.electronic));
+  let added = 0;
+  toSave.forEach(p => {
+    const key = p.paper + '||' + p.electronic;
+    if(!existingKeys.has(key)) {
+      convPairs.push({ id: Date.now().toString() + added, paper: p.paper, electronic: p.electronic, note: '', createdAt: new Date().toISOString() });
+      added++;
+    }
+  });
+  pendingPairs = pendingPairs.filter(p => p.paper === p.electronic); // 未書き換え行は残す
+  saveToStorage();
+  renderConvPairs();
+  renderPendingPairs();
+  toast(`${added}件を学習データに保存しました`, 'success');
+}
+
+// --- 一括インポート ---
+function bulkImportConvPairs() {
+  const text = document.getElementById('bulkImportText').value.trim();
+  if(!text) return toast('データを貼り付けてください', 'error');
+  const lines = text.split('\n').filter(l => l.trim());
+  let added = 0;
+  const existingKeys = new Set(convPairs.map(p => p.paper + '||' + p.electronic));
+  for(const line of lines) {
+    const sep = line.includes('\t') ? '\t' : ',';
+    const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+    const [paper, electronic, note=''] = cols;
+    if(!paper || !electronic || paper === electronic) continue;
+    const key = paper + '||' + electronic;
+    if(existingKeys.has(key)) continue;
+    convPairs.push({ id: Date.now().toString() + added, paper, electronic, note, createdAt: new Date().toISOString() });
+    existingKeys.add(key);
+    added++;
+  }
+  if(added > 0) { saveToStorage(); renderConvPairs(); }
+  toast(added > 0 ? `${added}件をインポートしました` : '新しいデータはありませんでした', added > 0 ? 'success' : '');
+  document.getElementById('bulkImportText').value = '';
+}
+
+function handleCsvImport(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bulkImportText').value = e.target.result;
+    bulkImportConvPairs();
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+
+function renderConvPairs() {
+  const el = document.getElementById('pairsList');
+  const label = document.getElementById('pairCountLabel');
+  if(label) label.textContent = `${convPairs.length}件`;
+  if(!el) return;
+  if(!convPairs.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px">学習データがありません。<br>変換例を追加するとAIの精度が上がります。</div>';
+    return;
+  }
+  el.innerHTML = [...convPairs].reverse().map(p => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px">紙カルテ</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);word-break:break-all">${p.paper}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:6px;margin-bottom:2px">電子カルテ</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);word-break:break-all">${p.electronic}</div>
+          ${p.note ? `<div style="font-size:10px;color:var(--text3);margin-top:4px">${p.note}</div>` : ''}
+        </div>
+        <button class="del-row" onclick="removeConvPair('${p.id}')">×</button>
+      </div>
+    </div>`).join('');
+}
+
+function addConvPair() {
+  const paper = document.getElementById('newPairPaper').value.trim();
+  const electronic = document.getElementById('newPairElectronic').value.trim();
+  const note = document.getElementById('newPairNote').value.trim();
+  if(!paper || !electronic) return toast('紙カルテと電子カルテ両方を入力してください', 'error');
+  convPairs.push({ id: Date.now().toString(), paper, electronic, note, createdAt: new Date().toISOString() });
+  document.getElementById('newPairPaper').value = '';
+  document.getElementById('newPairElectronic').value = '';
+  document.getElementById('newPairNote').value = '';
+  saveToStorage();
+  renderConvPairs();
+  toast('学習データに追加しました', 'success');
+}
+
+function removeConvPair(id) {
+  convPairs = convPairs.filter(p => p.id !== id);
+  saveToStorage();
+  renderConvPairs();
+  toast('削除しました');
+}
+
+function fillConvInput(formula, ownerName='', temp='', symptom='') {
+  document.getElementById('convInput').value = formula;
+  document.getElementById('convResult').value = formula; // 右列もB1形式でプリセット→ユーザーが書き換える
+  document.getElementById('convOwnerName').value = ownerName;
+  document.getElementById('convTemp').value = temp;
+  document.getElementById('convSymptom').value = symptom;
+  document.getElementById('convDate').value = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  updateKartePreview();
+  // pendingPairsにも追加（左右同値の行として）
+  if(formula) addPendingPair(formula, formula);
+  switchTab('conv');
+  toast('電カル変換タブに入力しました', 'success');
+}
+
+function copyConvResult() {
+  const result = document.getElementById('convResult').value;
+  if(!result) return;
+  navigator.clipboard.writeText(result).then(() => toast('電子カルテ形式をコピーしました', 'success'));
+}
+
+function saveConvPairFromResult() {
+  const paper = document.getElementById('convInput').value.trim();
+  const electronic = document.getElementById('convResult').value.trim();
+  if(!paper || !electronic) return toast('B1形式と処置内容の両方が必要です', 'error');
+  if(paper === electronic) return toast('処置内容を電カル形式に書き換えてから保存してください', 'error');
+  convPairs.push({ id: Date.now().toString(), paper, electronic, note: '', createdAt: new Date().toISOString() });
+  saveToStorage();
+  renderConvPairs();
+  toast('学習データに保存しました', 'success');
+}
+
+async function convertToElectronic() {
+  const ak = document.getElementById('anthropicKey').value.trim();
+  if(!ak) return toast('APIキーを設定してください（設定タブ）', 'error');
+  const input = document.getElementById('convInput').value.trim();
+  if(!input) return toast('紙カルテ形式を入力してください', 'error');
+
+  const btn = document.getElementById('convBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 変換中...';
+
+  let examplesText = '';
+  if(convPairs.length > 0) {
+    const examples = convPairs.slice(-20);
+    examplesText = '\n\n【変換例（これを参考に変換してください）】\n' +
+      examples.map(p => `紙カルテ: ${p.paper}\n電子カルテ: ${p.electronic}`).join('\n\n');
+  }
+
+  const prompt = `あなたは獣医診療記録の変換AIです。院内計算用の紙カルテ形式を、保険申請用の電子カルテ形式に変換してください。変換結果のテキストのみを出力し、説明・コード・他の文字は一切不要です。${examplesText}
+
+【変換対象】
+紙カルテ: ${input}
+
+電子カルテ（変換結果のみ出力）:`;
+
+  try {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${ak}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({contents:[{parts:[{text: prompt}]}]})
+    });
+    const data = await resp.json();
+    if(data.error) throw new Error(data.error.message);
+    const result = (data.candidates[0].content.parts||[]).map(b=>b.text||'').join('').trim();
+    document.getElementById('convResult').value = result;
+    updateKartePreview();
+    toast('変換完了', 'success');
+  } catch(e) {
+    toast('エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'AIで変換';
+  }
+}
+
+// ===================== TOAST =====================
+function toast(msg,type='') {
+  const wrap=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  el.className='toast'+(type?' '+type:'');
+  el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(),3500);
+}
+</script>
+</body>
+</html>
