@@ -733,7 +733,7 @@ function handleMasterCsvImport(input) {
 
 function exportMasterCsv() {
   const csv = MASTER.map(m => `${m.name},${m.price}`).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `vetmemo_master_${new Date().toISOString().slice(0,10)}.csv`;
