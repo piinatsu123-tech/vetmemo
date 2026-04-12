@@ -440,6 +440,22 @@ input[type=password]{font-family:'JetBrains Mono',monospace;letter-spacing:.05em
         <div class="panel-hdr"><h2>📋 マスターデータ管理</h2></div>
         <div class="panel-body">
           <p class="input-hint" style="margin-bottom:10px">品目の追加・編集・削除ができます。品目名はAI解析・B1形式出力に使われます。</p>
+
+          <!-- 一括インポート／エクスポート -->
+          <details style="margin-bottom:12px">
+            <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);padding:4px 0;user-select:none">📥 一括インポート／エクスポート（薬価改定など）</summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+              <p class="input-hint">ExcelのA列:品目名、B列:単価をコピーして貼り付け、またはCSVファイルを選択。<br>既存と同名の品目は単価を上書き、新規品目は追加されます。</p>
+              <textarea id="masterImportText" placeholder="品目名&#9;単価&#10;アンピシリン注射液&#9;1200&#10;マルボフロキサシン錠&#9;800" style="min-height:80px;resize:vertical;font-family:'JetBrains Mono',monospace;font-size:12px"></textarea>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="bulkImportMaster()">インポート実行</button>
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer">CSVファイル<input type="file" accept=".csv,.txt" style="display:none" onchange="handleMasterCsvImport(this)"></label>
+                <button class="btn btn-ghost btn-sm" onclick="exportMasterCsv()">↓ CSVでエクスポート</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- 個別追加・編集 -->
           <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
             <input type="text" id="newMasterName" placeholder="品目名" style="flex:1;min-width:100px">
             <input type="number" id="newMasterPrice" placeholder="単価(円)" style="width:90px" min="0" step="0.01">
@@ -448,9 +464,6 @@ input[type=password]{font-family:'JetBrains Mono',monospace;letter-spacing:.05em
           </div>
           <input type="text" id="masterEditSearch" placeholder="品目を検索..." oninput="renderMasterEditor()" style="margin-bottom:8px">
           <div id="masterEditor" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
-          <div style="margin-top:10px;display:flex;justify-content:flex-end">
-            <button class="btn btn-ghost btn-xs" onclick="resetMaster()" style="color:var(--text3)">デフォルトに戻す</button>
-          </div>
         </div>
       </div>
 
@@ -681,13 +694,51 @@ function deleteMasterItem(i) {
   toast(`「${name}」を削除しました`);
 }
 
-function resetMaster() {
-  if(!confirm('マスターデータをデフォルトに戻しますか？\n追加・編集した内容はすべて消えます。')) return;
-  MASTER = [...MASTER_BUILTIN];
+function bulkImportMaster() {
+  const text = document.getElementById('masterImportText').value.trim();
+  if(!text) return toast('データを貼り付けてください', 'error');
+  const lines = text.split('\n').filter(l => l.trim());
+  let updated = 0, added = 0;
+  for(const line of lines) {
+    const sep = line.includes('\t') ? '\t' : ',';
+    const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+    const [name, priceStr] = cols;
+    if(!name) continue;
+    const price = parseFloat(priceStr);
+    if(isNaN(price) || price < 0) continue;
+    const existing = MASTER.find(m => m.name === name);
+    if(existing) { existing.price = price; updated++; }
+    else { MASTER.push({ name, price }); added++; }
+  }
   saveToStorage();
   renderMasterEditor();
   renderMasterList();
-  toast('デフォルトに戻しました', 'success');
+  const dl = document.getElementById('masterNamesList');
+  if(dl) { dl.innerHTML = ''; MASTER.forEach(m => { const o = document.createElement('option'); o.value = m.name; dl.appendChild(o); }); }
+  toast(`更新: ${updated}件　追加: ${added}件`, 'success');
+  document.getElementById('masterImportText').value = '';
+}
+
+function handleMasterCsvImport(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('masterImportText').value = e.target.result;
+    bulkImportMaster();
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+
+function exportMasterCsv() {
+  const csv = MASTER.map(m => `${m.name},${m.price}`).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vetmemo_master_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('マスターデータをエクスポートしました', 'success');
 }
 
 function renderMasterList() {
