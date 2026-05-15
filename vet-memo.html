@@ -210,6 +210,16 @@ input[type=password]{font-family:'JetBrains Mono',monospace;letter-spacing:.05em
   <div class="tab" onclick="switchTab('conv')" id="tab-conv">
     🔄 電カル変換
   </div>
+  <div class="tab" onclick="switchTab('karte')" id="tab-karte">
+    📁 記録
+  </div>
+  <div class="tab" onclick="switchTab('diff')" id="tab-diff">
+    💴 差額入力
+    <span class="badge" id="unentBadge" style="display:none">0</span>
+  </div>
+  <div class="tab" onclick="switchTab('summary')" id="tab-summary">
+    📊 集計
+  </div>
 </div>
 
 <div class="layout">
@@ -481,10 +491,70 @@ input[type=password]{font-family:'JetBrains Mono',monospace;letter-spacing:.05em
 
     </div>
 
+    <!-- ===== TAB: 記録 ===== -->
+    <div class="tab-page" id="page-karte">
+      <div class="panel">
+        <div class="panel-hdr"><h2>📁 診療記録を保存</h2></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div>
+              <label>日付</label>
+              <input type="date" id="karteDate">
+            </div>
+            <div>
+              <label>農場名</label>
+              <input type="text" id="karteFarm" list="farmNamesList" placeholder="例: 山田牧場" autocomplete="off">
+            </div>
+          </div>
+          <label>牛番号</label>
+          <input type="text" id="karteCow" placeholder="例: 0001">
+          <label>紙カルテ金額 (円)</label>
+          <input type="number" id="kartePaperAmount" placeholder="例: 12000" min="0" step="1" style="font-family:'JetBrains Mono',monospace" onkeydown="if(event.key==='Enter')saveKarteRecord()">
+          <p class="input-hint">計算タブの「📁 記録」ボタンで自動入力できます</p>
+          <button class="btn btn-primary btn-full" onclick="saveKarteRecord()" style="margin-top:12px">💾 保存</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr">
+          <h2>本日の記録</h2>
+          <span id="todayCount" style="font-size:11px;color:var(--text3);margin-left:auto">0件</span>
+        </div>
+        <div class="panel-body" id="todayKarteList">
+          <div class="empty-state"><div class="es-icon">📋</div>本日の記録はありません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: 差額入力 ===== -->
+    <div class="tab-page" id="page-diff">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2)">電子カルテ未入力 <span id="diffCount" style="color:var(--text3)">0件</span></div>
+      </div>
+      <div id="diffList">
+        <div class="empty-state"><div class="es-icon">✅</div>未入力の記録はありません</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: 集計 ===== -->
+    <div class="tab-page" id="page-summary">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-size:12px;color:var(--text2)">
+          <input type="checkbox" id="summaryFilterUnent" onchange="renderSummary()" style="width:auto;margin:0">
+          未入力のみ表示
+        </label>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportKarteCsv()">↓ CSVエクスポート</button>
+      </div>
+      <div id="summaryContent">
+        <div class="empty-state"><div class="es-icon">📊</div>記録がありません</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
 <datalist id="masterNamesList"></datalist>
+<datalist id="farmNamesList"></datalist>
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -498,6 +568,7 @@ let memos = [];    // {id, time, patientName, ownerName, text, status:'pending'|
 let DICT_WORDS = ["マルボ","アンピ","デキサ","ネオアス","イーエスイー","ザクトラン","セフチオ","バイトリル","フルニキ","メトクロ","パンカル","ウルソ","フルスル","バソラミン","ペニシリン","フォルテ","メンブトン","ダイメトン","パドリン","ベルパリン","セファ","エクセネル","ガスナイン","プロナルゴン","ビクタス","デポー","ジメトキシン","スタマー","ウルソ粉","ビオペア","ミヤリサン","ビスキノン","ビオスリー","獣医散","モニラック","ルミナップ","ノイエル","ボバクチン","ジクロ","レパミピド","コクシックス","ポルトラック","オメプラゾール","エクセーデ","タイニー","カナマイ","硫マグ","スタートバック","セフロ","インタゲン","ネオマイゾン","フロロコール","フジックス","ガス抜き"];
 let activeResultId = null; // for sidebar master add
 let convPairs = []; // [{id, paper, electronic, note, createdAt}]
+let karteRecords = []; // [{id, date, farm, cow, paper_amount, electronic_amount, diff, month}]
 
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -512,6 +583,10 @@ document.addEventListener('DOMContentLoaded', () => {
   renderConvPairs();
   const dl = document.getElementById('masterNamesList');
   MASTER.forEach(m => { const o = document.createElement('option'); o.value = m.name; dl.appendChild(o); });
+
+  document.getElementById('karteDate').value = getToday();
+  updateFarmAutocomplete();
+  updateDiffBadge();
 
   // URLパラメータからメモを受け取る（iPhoneショートカット連携）
   handleUrlParams();
@@ -550,6 +625,9 @@ function switchTab(name) {
   document.getElementById('tab-'+name).classList.add('active');
   document.getElementById('page-'+name).classList.add('active');
   if(name === 'calc') renderResultsList();
+  if(name === 'karte') { document.getElementById('karteDate').value = getToday(); renderTodayKarteList(); }
+  if(name === 'diff') renderDiffList();
+  if(name === 'summary') renderSummary();
 }
 
 // ===================== STORAGE =====================
@@ -559,6 +637,7 @@ function saveToStorage() {
     localStorage.setItem('vetmemo_dict', JSON.stringify(DICT_WORDS));
     localStorage.setItem('vetmemo_master', JSON.stringify(MASTER));
     localStorage.setItem('vetmemo_convPairs', JSON.stringify(convPairs));
+    localStorage.setItem('vetmemo_karteRecords', JSON.stringify(karteRecords));
   } catch(e){}
 }
 function loadFromStorage() {
@@ -571,6 +650,8 @@ function loadFromStorage() {
     if(ms) MASTER = JSON.parse(ms);
     const cp = localStorage.getItem('vetmemo_convPairs');
     if(cp) convPairs = JSON.parse(cp);
+    const kr = localStorage.getItem('vetmemo_karteRecords');
+    if(kr) karteRecords = JSON.parse(kr);
   } catch(e){}
 }
 
@@ -998,6 +1079,7 @@ function renderResultsList() {
       </div>
       <div class="rc-actions">
         <button class="btn btn-discord btn-sm" onclick="sendOneToDiscord('${m.id}')">Discord送信</button>
+        <button class="btn btn-ghost btn-sm" onclick="fillKarteFromMemoId('${m.id}')">📁 記録</button>
         <button class="btn btn-ghost btn-sm" onclick="copyMemoFormula('${m.id}')">B1形式コピー</button>
         <button class="btn btn-ghost btn-sm" onclick="fillConvInput(\`${formula}\`,\`${(m.ownerName||'').replace(/`/g,"'")}\`,\`${(m.temp||'').replace(/`/g,"'")}\`,\`${(m.symptom||'').replace(/`/g,"'")}\`)">🔄 電カル変換</button>
         <button class="btn btn-ghost btn-sm" onclick="reparse('${m.id}')">再解析</button>
@@ -1472,6 +1554,236 @@ async function convertToElectronic() {
     btn.disabled = false;
     btn.innerHTML = 'AIで変換';
   }
+}
+
+// ===================== KARTE RECORDS =====================
+function getToday() {
+  return new Date().toISOString().slice(0,10);
+}
+function getMonth(dateStr) {
+  return dateStr.slice(0,7);
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function saveKarteRecord() {
+  const date = document.getElementById('karteDate').value || getToday();
+  const farm = document.getElementById('karteFarm').value.trim();
+  const cow  = document.getElementById('karteCow').value.trim();
+  const paperAmount = parseInt(document.getElementById('kartePaperAmount').value);
+  if(!farm) return toast('農場名を入力してください', 'error');
+  if(!cow)  return toast('牛番号を入力してください', 'error');
+  if(!paperAmount || paperAmount <= 0) return toast('紙カルテ金額を入力してください', 'error');
+  karteRecords.push({ id: Date.now().toString(), date, farm, cow, paper_amount: paperAmount, electronic_amount: null, diff: null, month: getMonth(date) });
+  saveToStorage();
+  document.getElementById('karteFarm').value = '';
+  document.getElementById('karteCow').value = '';
+  document.getElementById('kartePaperAmount').value = '';
+  renderTodayKarteList();
+  updateFarmAutocomplete();
+  updateDiffBadge();
+  toast('記録を保存しました', 'success');
+}
+
+function renderTodayKarteList() {
+  const today = getToday();
+  const recs = karteRecords.filter(r => r.date === today);
+  const el = document.getElementById('todayKarteList');
+  const countEl = document.getElementById('todayCount');
+  if(!el) return;
+  if(countEl) countEl.textContent = recs.length + '件';
+  if(!recs.length) {
+    el.innerHTML = '<div class="empty-state"><div class="es-icon">📋</div>本日の記録はありません</div>';
+    return;
+  }
+  el.innerHTML = [...recs].reverse().map(r => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:4px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${escHtml(r.farm)} / <span style="color:var(--text2)">牛${escHtml(r.cow)}</span></div>
+        <div style="font-size:11px;color:var(--text3)">${r.date}</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--green)">¥${r.paper_amount.toLocaleString()}</div>
+      <button class="del-row" onclick="deleteKarteRecord('${r.id}')">×</button>
+    </div>`).join('');
+}
+
+function deleteKarteRecord(id) {
+  if(!confirm('この記録を削除しますか？')) return;
+  karteRecords = karteRecords.filter(r => r.id !== id);
+  saveToStorage();
+  renderTodayKarteList();
+  renderDiffList();
+  renderSummary();
+  updateDiffBadge();
+  toast('削除しました');
+}
+
+function updateDiffBadge() {
+  const count = karteRecords.filter(r => r.electronic_amount === null).length;
+  const badge = document.getElementById('unentBadge');
+  const countEl = document.getElementById('diffCount');
+  if(badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+  if(countEl) countEl.textContent = count + '件';
+}
+
+function updateFarmAutocomplete() {
+  const farms = [...new Set(karteRecords.map(r => r.farm))].sort();
+  const dl = document.getElementById('farmNamesList');
+  if(!dl) return;
+  dl.innerHTML = '';
+  farms.forEach(f => { const o = document.createElement('option'); o.value = f; dl.appendChild(o); });
+}
+
+function fillKarteFromMemoId(memoId) {
+  const memo = memos.find(m => m.id === memoId);
+  if(!memo) return;
+  const total = Math.round((memo.items||[]).reduce((s,it) => s + it.price * it.qty, 0));
+  document.getElementById('karteDate').value = getToday();
+  document.getElementById('karteFarm').value = memo.ownerName || '';
+  document.getElementById('karteCow').value = memo.patientNo || '';
+  document.getElementById('kartePaperAmount').value = total || '';
+  switchTab('karte');
+  toast('記録タブに入力しました。確認して保存してください', 'success');
+}
+
+// ===================== DIFF INPUT =====================
+function renderDiffList() {
+  const el = document.getElementById('diffList');
+  if(!el) return;
+  updateDiffBadge();
+  const unentered = karteRecords.filter(r => r.electronic_amount === null).sort((a,b) => a.date.localeCompare(b.date));
+  if(!unentered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="es-icon">✅</div>未入力の記録はありません</div>';
+    return;
+  }
+  el.innerHTML = unentered.map(r => `
+    <div class="panel" style="margin-bottom:12px">
+      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${escHtml(r.farm)} / 牛${escHtml(r.cow)}</div>
+          <div style="font-size:11px;color:var(--text3)">${r.date}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--text3)">紙カルテ</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--green)">¥${r.paper_amount.toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="padding:12px 14px;display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1">
+          <label style="margin-top:0">電子カルテ金額 (円)</label>
+          <input type="number" id="elec-${r.id}" placeholder="例: 10000" min="0" step="1"
+            style="font-family:'JetBrains Mono',monospace"
+            onkeydown="if(event.key==='Enter')saveElectronicAmount('${r.id}')">
+        </div>
+        <button class="btn btn-primary" onclick="saveElectronicAmount('${r.id}')">保存</button>
+      </div>
+    </div>`).join('');
+}
+
+function saveElectronicAmount(id) {
+  const record = karteRecords.find(r => r.id === id);
+  if(!record) return;
+  const val = parseInt(document.getElementById('elec-'+id).value);
+  if(isNaN(val) || val < 0) return toast('金額を正しく入力してください', 'error');
+  record.electronic_amount = val;
+  record.diff = record.paper_amount - val;
+  saveToStorage();
+  renderDiffList();
+  renderSummary();
+  updateDiffBadge();
+  const sign = record.diff >= 0 ? '+' : '';
+  toast(`差額: ${sign}¥${record.diff.toLocaleString()}`, record.diff >= 0 ? 'success' : '');
+}
+
+// ===================== SUMMARY =====================
+function renderSummary() {
+  const el = document.getElementById('summaryContent');
+  if(!el) return;
+  const showUnent = document.getElementById('summaryFilterUnent')?.checked;
+  const records = showUnent ? karteRecords.filter(r => r.electronic_amount === null) : karteRecords;
+  if(!records.length) {
+    el.innerHTML = '<div class="empty-state"><div class="es-icon">📊</div>' + (showUnent ? '未入力の記録はありません' : '記録がありません') + '</div>';
+    return;
+  }
+  const months = [...new Set(records.map(r => r.month))].sort().reverse();
+  let html = '';
+  let detailIdx = 0;
+  months.forEach(month => {
+    const monthRecs = records.filter(r => r.month === month);
+    const farms = [...new Set(monthRecs.map(r => r.farm))].sort();
+    const monthEntered = monthRecs.filter(r => r.electronic_amount !== null);
+    const monthDiff = monthEntered.reduce((s,r) => s + r.diff, 0);
+    html += `<div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:14px;font-weight:700">📅 ${month}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${monthDiff >= 0 ? 'var(--green)' : 'var(--danger)'}">差額計 ¥${monthDiff.toLocaleString()}</span>
+      </div>
+      <table class="items-table" style="width:100%">
+        <thead><tr>
+          <th>農場</th><th style="text-align:right">件数</th>
+          <th style="text-align:right">紙カルテ計</th>
+          <th style="text-align:right">電子カルテ計</th>
+          <th style="text-align:right">差額計</th>
+        </tr></thead>
+        <tbody>`;
+    farms.forEach(farm => {
+      const farmRecs = monthRecs.filter(r => r.farm === farm);
+      const farmEntered = farmRecs.filter(r => r.electronic_amount !== null);
+      const totalPaper = farmRecs.reduce((s,r) => s + r.paper_amount, 0);
+      const totalElec  = farmEntered.reduce((s,r) => s + r.electronic_amount, 0);
+      const totalDiff  = farmEntered.reduce((s,r) => s + r.diff, 0);
+      const idx = detailIdx++;
+      const diffColor = totalDiff >= 0 ? 'var(--green)' : 'var(--danger)';
+      html += `<tr style="cursor:pointer" onclick="toggleSummaryDetail(${idx})">
+        <td class="name-cell">${escHtml(farm)}</td>
+        <td class="num-cell">${farmEntered.length}/${farmRecs.length}</td>
+        <td class="num-cell">¥${totalPaper.toLocaleString()}</td>
+        <td class="num-cell">${farmEntered.length > 0 ? '¥'+totalElec.toLocaleString() : '—'}</td>
+        <td class="num-cell" style="color:${diffColor}">${farmEntered.length > 0 ? '¥'+totalDiff.toLocaleString() : '—'}</td>
+      </tr>
+      <tr id="summary-detail-${idx}" style="display:none">
+        <td colspan="5" style="padding:0">
+          <div style="padding:6px 12px;background:var(--surface2)">`;
+      [...farmRecs].sort((a,b) => a.date.localeCompare(b.date)).forEach(r => {
+        const diffStr = r.diff === null ? '—' : (r.diff >= 0 ? '+' : '') + '¥' + r.diff.toLocaleString();
+        const diffCol = r.diff === null ? 'var(--text3)' : r.diff >= 0 ? 'var(--green)' : 'var(--danger)';
+        html += `<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+          <span style="color:var(--text3);min-width:76px">${r.date}</span>
+          <span style="color:var(--text2)">牛${escHtml(r.cow)}</span>
+          <span style="flex:1"></span>
+          <span style="font-family:'JetBrains Mono',monospace">紙¥${r.paper_amount.toLocaleString()}</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:${r.electronic_amount === null ? 'var(--warn)' : 'var(--text2)'}">電${r.electronic_amount === null ? '未入力' : '¥'+r.electronic_amount.toLocaleString()}</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:${diffCol}">${diffStr}</span>
+        </div>`;
+      });
+      html += `</div></td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function toggleSummaryDetail(idx) {
+  const row = document.getElementById('summary-detail-' + idx);
+  if(!row) return;
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+// ===================== CSV EXPORT =====================
+function exportKarteCsv() {
+  if(!karteRecords.length) return toast('エクスポートするデータがありません', 'error');
+  const header = '日付,農場名,牛番号,紙カルテ金額,電子カルテ金額,差額,月';
+  const rows = karteRecords
+    .slice().sort((a,b) => a.date.localeCompare(b.date))
+    .map(r => [r.date, `"${r.farm}"`, `"${r.cow}"`, r.paper_amount, r.electronic_amount ?? '', r.diff ?? '', r.month].join(','));
+  const csv = '﻿' + header + '\n' + rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vetmemo_karte_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSVをエクスポートしました', 'success');
 }
 
 // ===================== TOAST =====================
